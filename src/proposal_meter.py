@@ -9,18 +9,11 @@ import torch
 from argparse import ArgumentParser
 from datetime import datetime
 from math import isnan
-
-environ["TOKENIZERS_PARALLELISM"]="false"
-#subprocess._USE_VFORK = False
-#subprocess._USE_POSIX_SPAWN = False
-#summarizer
-#from transformers import pipeline
+environ["TOKENIZERS_PARALLELISM"]="false" #parallel GPU encoding makes subprocess run statement throw warning over parllelism
 
 def show_color_banner(message:str,color:float):
     ntiers=11
     rgb = [240,245,250,255,46,33,92,226,202,199]
-    #[bold=1;8bit start;idk;colorvalue]
-    #system('echo -e "\e[1;38;5;%dm[%.4f] %s\e[0m"'%
     subprocess.run(['echo','-e',"\e[1;38;5;%dm[%.4f] %s\e[0m"%
            (rgb[int(color*100)//ntiers],
             color,
@@ -29,8 +22,6 @@ def show_color_banner(message:str,color:float):
 def show_color_banner_no_score(message:str,color:float):
     ntiers=11
     rgb = [240,245,250,255,46,33,92,226,202,199]
-    #[bold=1;8bit start;idk;colorvalue]
-    #system('echo -e "\e[1;38;5;%dm%s\e[0m"'%
     subprocess.run(['echo','-e',"\e[1;38;5;%dm%s\e[0m"%
            (rgb[int(color*100)//ntiers],
             message.replace("'","\'").replace('"',"").replace('\n',' -- '))
@@ -39,25 +30,19 @@ def show_color_banner_no_score(message:str,color:float):
 def show_one(key1:str,val1:str):
     if isinstance(val1,str):
         if len(val1)<250 and val1.count('\n')<5:
-            #system('echo -e "\e[1m%s:\e[0m \e[38;5;8m%s\e[0m"'%(key1,val1.replace("'","\'")))
             subprocess.run(['echo', '-e', "\e[1m%s:\e[0m \e[38;5;8m%s\e[0m"%(key1,val1.replace("'","\'"))])
         elif val1.count('\n')>=5:
-            #system('echo -e "\e[1m%s:\e[0m \e[38;5;8m%s\e[0m"'%(key1,val1.replace("'","\'").replace("\n"," -- ")[:250]))
             subprocess.run(['echo','-e',"\e[1m%s:\e[0m \e[38;5;8m%s\e[0m"%(key1,val1.replace("'","\'").replace("\n"," -- ")[:250])])
         else:
-            #system('echo -e "\e[1m%s:\e[0m \e[38;5;8m%s%s\e[0m"'%(key1,val1[:250].replace("'","\'"),'...See URL for more'))
             subprocess.run(['echo','-e',"\e[1m%s:\e[0m \e[38;5;8m%s%s\e[0m"%(key1,val1[:250].replace("'","\'"),'...See URL for more')])
 def show_one_limitless(key1:str,val1:str):
     if isinstance(val1,str):
-        #system('echo -e "\e[1m%s:\e[0m \e[38;5;8m%s\e[0m"'%(key1,val1.replace("'","\'")))
         subprocess.run(['echo','-e',"\e[1m%s:\e[0m \e[38;5;8m%s\e[0m"%(key1,val1.replace("'","\'"))])
 def show_one_underline(key1:str,val1:str):
     if isinstance(val1,str):
         if len(val1)<250:
-            #system("echo -e '\e[1;4m%s:\e[0m \e[38;5;8m%s\e[0m'"%(key1,val1.replace("'","\'")))
             subprocess.run(['echo','-e','\e[1;4m%s:\e[0m \e[38;5;8m%s\e[0m'%(key1,val1.replace("'","\'"))])
         else:
-            #system("echo -e '\e[1;4m%s:\e[0m \e[38;5;8m%s%s\e[0m'"%(key1,val1[:250].replace("'","\'"),'...See URL for more'))
             subprocess.run(['echo','-e','\e[1;4m%s:\e[0m \e[38;5;8m%s%s\e[0m'%(key1,val1[:250].replace("'","\'"),'...See URL for more')])
 
 class Raw_Data_Index():
@@ -131,7 +116,6 @@ class NSF(Raw_Data_Index):
         for attname in self.df.columns:
             if attname==self.description_attribute:
                 show_one_underline(attname,self.df.iloc[idx][attname])
-                #show_one_limitless('Summary',summary_model(self.df.loc[idx][attname], max_length=280, min_length=140, do_sample=False)[0]['summary_text'])
             else:
                 show_one(attname,self.df.iloc[idx][attname])
     def date2MMDDYYYY(self,date:str):
@@ -180,7 +164,6 @@ class MAILER(Raw_Data_Index):
             if attname==self.description_attribute:
                 show_one_underline(attname,self.df.iloc[idx][attname])
                 print(self.df.iloc[idx][attname])
-                #show_one_limitless('Summary',summary_model(self.df.loc[idx][attname], max_length=280, min_length=140, do_sample=False)[0]['summary_text'])
             else:
                 show_one(attname,self.df.iloc[idx][attname])
     def date2MMDDYYYY(self,date:str):
@@ -229,7 +212,6 @@ class CMU(Raw_Data_Index):
         for attname in self.df.columns:
             if attname==self.description_attribute:
                 show_one_underline(attname,self.df.iloc[idx][attname])
-                #show_one_limitless('Summary',summary_model(self.df.loc[idx][attname], max_length=280, min_length=140, do_sample=False)[0]['summary_text'])
             else:
                 show_one(attname,self.df.iloc[idx][attname])
     def date2MMDDYYYY(self,date:str):
