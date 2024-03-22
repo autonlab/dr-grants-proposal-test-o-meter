@@ -1,4 +1,3 @@
-#!/home/ngisolfi/anaconda3/envs/drgrant/bin/python
 '''
 /\\\\\\\\\\\\__________________________/\\\\\\\\\\\\__________________________________________________________/\\\\________________
 \/\\\////////\\\______________________/\\\//////////__________________________________________________________\///\\_______________
@@ -60,7 +59,7 @@ import subprocess
 # bart-large-cnn
 #from transformers import pipeline
 
-IDIR='/home/ngisolfi/github/dr-grants-proposal-test-o-meter/index'
+IDIR='./index'
 
 def encode_prompt( prompt ):
     #model = SentenceTransformer('all-MiniLM-L6-v2')

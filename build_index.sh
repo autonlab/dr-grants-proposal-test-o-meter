@@ -1,6 +1,6 @@
 #!/bin/bash
-IDIR=/home/ngisolfi/github/dr-grants-proposal-test-o-meter/index
-SDIR=/home/ngisolfi/github/dr-grants-proposal-test-o-meter/src
+IDIR=./index
+SDIR=./src
 MAXLINES=5000
 
 if [ ! -d ${IDIR} ]; then
