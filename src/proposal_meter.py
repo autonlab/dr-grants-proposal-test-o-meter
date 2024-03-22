@@ -590,7 +590,7 @@ def encode_narratives( narratives ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if torch.cuda.device_count()>1:
         pool=model.start_multi_process_pool()
-        embeddings = model.encode_multi_process(narratives,pool,batch_size=128,chunk_size=len(narratives)/100)
+        embeddings = model.encode_multi_process(narratives,pool,batch_size=64,chunk_size=len(narratives)/100)
         model.stop_multi_process_pool(pool)
     else:
         embeddings = model.encode(narratives,show_progress_bar=True,batch_size=128,device=device)
