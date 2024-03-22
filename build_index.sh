@@ -12,5 +12,5 @@ for FILE in ${SDIR}/get_*; do
 	${FILE} ${IDIR} ${SDIR} ${MAXLINES}
 done
 
-echo 'Building IRIS'
+echo 'Building index for Dr. Grants Proposal Test-O-Meter'
 python ${SDIR}/proposal_meter.py ${IDIR}
