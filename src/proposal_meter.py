@@ -244,6 +244,54 @@ class CMU(Raw_Data_Index):
         result['Status']='Open'
         return result
 
+class EXTERNAL(Raw_Data_Index):
+    def __init__(self,filename:str,desc_att:str):
+        super().__init__(filename,desc_att)
+        self.load_data()
+    def load_data(self):
+        self.df=pd.read_csv(self.filename)
+    def get_descriptions(self):
+        return pd.DataFrame({'filename':self.filename,'row':self.df.index,'description':self.df[self.description_attribute]})
+    def print_title(self,row:int,similarity:float):
+        show_color_banner_no_score(self.df.iloc[row]['Opportunity Name'],similarity)
+    def print(self,idx:int,similarity:float):
+        show_color_banner(self.df.iloc[idx]['Opportunity Name'],similarity)
+        show_one('Posted on','CMU External Foundations')
+        for attname in self.df.columns:
+            if attname==self.description_attribute:
+                show_one_underline(attname,self.df.iloc[idx][attname])
+            else:
+                show_one(attname,self.df.iloc[idx][attname])
+    def date2MMDDYYYY(self,date:str):
+        if isinstance(date,float):
+            return None
+        return datetime.strptime(date,'%m/%d/%Y').strftime('%m/%d/%Y')
+    def to_dict(self,idx:int,similarity:float):
+        #Opportunity Name,Organization,Deadline,Early Career,Description,URL,$ Amount of Award,Duration of Award
+        row=self.df.iloc[idx]
+        result = self.mk_empty_row()
+        result['Similarity']=similarity
+        result['Feed']='CMU External Funding'
+        result['Title']=row['Opportunity Name']
+        result['Sponsor']=row['Organization']
+        #result['SubmissionDetails']
+        result['Posted']='NA'
+        #result['ProgramID']=row['Solicitation Number']
+        result['SponsorType']='External Foundation'#row['Federal/Non-Federal']
+        result['DueDates']={'Deadline':self.date2MMDDYYYY(row['Deadline'])}
+        result['CloseDate']=self.date2MMDDYYYY(row['Deadline'])
+        #result['LimitedSubmissionInfo']=row['CMU Limit']
+        #result['SubmissionRequirements']=row['Proposal Requirements (internal, external nominations)']
+        result['URL']='https://www.cmu.edu/engage/partner/foundations/faculty-staff/index.html'
+        result['SolicitationURL']=row['URL']
+        result['Amount']=row['$ Amount of Award']
+        result['Description']=row['Description']
+        result['Status']='Open'
+        result['Duration']=row['Duration of Award']
+        result['EarlyCareer']=row['Early Career']
+        return result
+
+
 class GFORWARD(Raw_Data_Index):
     def __init__(self,filename:str,desc_att:str):
         super().__init__(filename,desc_att)
@@ -601,7 +649,7 @@ def encode_narratives( narratives ):
 if __name__ == "__main__":
     args = argv[1:]
     IDIR=args[0]
-    target={'CMU':'Description','SCS':'Brief Description','NSF':'Synopsis','GRANTS':'Description','SAM':'Description','PIVOT':'Abstract','GFORWARD':'Description'}
+    target={'CMU':'Description','EXTERNAL':'Description','SCS':'Brief Description','NSF':'Synopsis','GRANTS':'Description','SAM':'Description','PIVOT':'Abstract','GFORWARD':'Description'}
     all_data = pd.concat([eval(file.split('/')[-1].split('_')[0])(filename=file,desc_att=target[file.split('/')[-1].split('_')[0]]).get_descriptions() for file in glob(f'{IDIR}/*_S*')],ignore_index=True)
     df = all_data.drop_duplicates(subset=['description'],keep='last',ignore_index=True)#glob pattern matches GFORWARD first, which we would rather limit
     print('Torch enabled?: ',torch.cuda.is_available())
