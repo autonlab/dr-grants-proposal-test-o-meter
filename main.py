@@ -20,25 +20,6 @@ _______\////////////_____\///___\///________\////////////____\///___________\///
                              | $$                                                                                                  
                              | $$                                                                                                  
                              |__/                                                                                                  
-
-  _   _                       _   _                  _   _             _                                _     _
- | | | | _____      __   __ _| |_| |_ _ __ __ _  ___| |_(_)_   _____  (_)___   _   _  ___  _   _ _ __  (_) __| | ___  __ _
- | |_| |/ _ \ \ /\ / /  / _` | __| __| '__/ _` |/ __| __| \ \ / / _ \ | / __| | | | |/ _ \| | | | '__| | |/ _` |/ _ \/ _` |
- |  _  | (_) \ V  V /  | (_| | |_| |_| | | (_| | (__| |_| |\ V /  __/ | \__ \ | |_| | (_) | |_| | |    | | (_| |  __/ (_| |
- |_| |_|\___/ \_/\_/    \__,_|\__|\__|_|  \__,_|\___|\__|_| \_/ \___| |_|___/  \__, |\___/ \__,_|_|    |_|\__,_|\___|\__,_|
-                                                                               |___/
-            _                      _             _   _       _                                           ___
-           | |_ ___    _ __   ___ | |_ ___ _ __ | |_(_) __ _| |  ___ _ __   ___  _ __  ___  ___  _ __ __|__ \
-           | __/ _ \  | '_ \ / _ \| __/ _ \ '_ \| __| |/ _` | | / __| '_ \ / _ \| '_ \/ __|/ _ \| '__/ __|/ /
-           | || (_) | | |_) | (_) | ||  __/ | | | |_| | (_| | | \__ \ |_) | (_) | | | \__ \ (_) | |  \__ \_|
-            \__\___/  | .__/ \___/ \__\___|_| |_|\__|_|\__,_|_| |___/ .__/ \___/|_| |_|___/\___/|_|  |___(_)
-                      |_|                                           |_|
-
-                    __          __  _          ____ _             __                 __   __
-                   / /   ___   / /_( )_____   / __/(_)____   ____/ /  ____   __  __ / /_ / /
-                  / /   / _ \ / __/|// ___/  / /_ / // __ \ / __  /  / __ \ / / / // __// / 
-                 / /___/  __// /_   (__  )  / __// // / / // /_/ /  / /_/ // /_/ // /_ /_/  
-                /_____/\___/ \__/  /____/  /_/  /_//_/ /_/ \__,_/   \____/ \__,_/ \__/(_)   
 '''
 from glob import glob
 from os.path import exists
@@ -57,12 +38,44 @@ from dateutil.parser import parse
 from src import proposal_meter
 import subprocess
 # bart-large-cnn
-#from transformers import pipeline
+from transformers import pipeline
 
 IDIR='./index'
 
+def display( ds, sorted_ds, i):
+    fn = ds.loc[sorted_ds.index[i]].filename
+    row = ds.loc[sorted_ds.index[i]].row
+    source=fn.split('/')[-1].split('_')[0]
+    funcname=eval('proposal_meter.'+source)
+    raw_data = funcname(fn,target[source])
+    raw_data.print(row,sorted_ds.iloc[i].similarity)
+
+def description( ds, sorted_ds, i):
+    fn = ds.loc[sorted_ds.index[i]].filename
+    row = ds.loc[sorted_ds.index[i]].row
+    source=fn.split('/')[-1].split('_')[0]
+    funcname=eval('proposal_meter.'+source)
+    raw_data = funcname(fn,target[source])
+    proposal_meter.show_one_limitless(i,raw_data.df.loc[row].Description)
+
+
+def summarize( ds, sorted_ds, i ):
+    if not exists('summarizer.model'):
+        summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+        summarizer.save_pretrained('summarizer.model')
+    else:
+        summarizer = pipeline("summarization", model='summarizer.model')
+    fn = ds.loc[sorted_ds.index[i]].filename
+    row = ds.loc[sorted_ds.index[i]].row
+    source=fn.split('/')[-1].split('_')[0]
+    funcname=eval('proposal_meter.'+source)
+    raw_data = funcname(fn,target[source])
+    attname = raw_data.description_attribute
+    line=raw_data.to_dict(row,sorted_ds.loc[i].similarity)
+    summary = summarizer(line['Description'], max_length=280, min_length=140, do_sample=False)[0]['summary_text']
+    proposal_meter.show_one_limitless(f'{line["Title"]} Summary',summary)#ds.loc[sorted_ds.index[i]].Description)
+
 def encode_prompt( prompt ):
-    #model = SentenceTransformer('all-MiniLM-L6-v2')
     model = SentenceTransformer('all-mpnet-base-v2')
     return model.encode([prompt])
 
@@ -112,6 +125,8 @@ if __name__ == "__main__":
                    help='Glob pattern to match specific records in data folder')
     p.add_argument('-t', '--title', default='CLI prompt',
                    help='Title for results if multiple queries')
+    p.add_argument('-i', '--interactive', default=False, action='store_true',
+                   help='Allows user to explore/summarize results by hand')
     args = p.parse_args()
 
     if not torch.cuda.is_available():
@@ -129,11 +144,7 @@ if __name__ == "__main__":
     csv_output=None
     j=0
     titles=[]
-    #if not exists('summarizer.model'):
-        #summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
-        #summarizer.save_pretrained('summarizer.model')
-    #else:
-        #summarizer = pipeline("summarization", model='summarizer.model')
+
     for i in sorted_ds.index:
         #if j>=k:
             #break
@@ -143,8 +154,7 @@ if __name__ == "__main__":
         funcname=eval('proposal_meter.'+source)
         raw_data = funcname(fn,target[source])
         line=raw_data.to_dict(row,sorted_ds.loc[i].similarity)
-        #if line['Similarity']<.45 and j>=k or j>8: break
-        if line['Similarity']>.3 and j>=k: break
+        if line['Similarity']<.45 and j>=k or j>8: break
         if line['Title'] in titles or any([line['Title'][:len(line['Title'])*3//4] in t for t in titles]):
             continue
         if args.active:
@@ -153,9 +163,11 @@ if __name__ == "__main__":
                     j+=1
                     titles.append(line['Title'] )
                 else:
+                    titles.append('[Closed] '+line['Title'] )
                     continue
             except:
                 if not 'CMU' in line['Feed']:
+                    titles.append('[Closed] '+line['Title'] )
                     continue
                 j+=1
                 titles.append(line['Title'] )
@@ -198,3 +210,20 @@ if __name__ == "__main__":
         csv_output['ActivityLocation']='See URL'
         csv_output['SubmissionDetails']='See URL'
         csv_output.to_csv(args.output,index=False, mode='a', header=not exists(args.output))
+
+    usercmd='help'
+    if args.interactive:
+        while usercmd!='quit':
+            if usercmd=='help':
+                print('Menu Options: summarize, display, description, help, quit')
+            if usercmd=='summarize':
+                neighbor=int(input('kth neighbor= '))
+                summarize(ds,sorted_ds,neighbor)
+            if usercmd=='display':
+                neighbor=int(input('kth neighbor= '))
+                print(neighbor,type(neighbor))
+                display(ds,sorted_ds,neighbor)
+            if usercmd=='description':
+                neighbor=int(input('kth neighbor= '))
+                description(ds,sorted_ds,neighbor)
+            usercmd=str(input('Next command: '))

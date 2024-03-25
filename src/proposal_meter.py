@@ -169,7 +169,7 @@ class SCS(Raw_Data_Index):
     def date2MMDDYYYY(self,date:str):
         if isinstance(date,float):
             return None
-        formats=['%m/%d/%y']
+        formats=['%m/%d/%y','%Y-%m-%d']
         dt=None
         for f in formats:
             try:
