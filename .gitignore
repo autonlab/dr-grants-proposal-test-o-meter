@@ -1,4 +1,4 @@
 index/
-hand_downloaded/
+raw/
 *.csv
 src/__pycache__/

@@ -593,7 +593,7 @@ def encode_narratives( narratives ):
         embeddings = model.encode_multi_process(narratives,pool,batch_size=64,chunk_size=len(narratives)/100)
         model.stop_multi_process_pool(pool)
     else:
-        embeddings = model.encode(narratives,show_progress_bar=True,batch_size=128,device=device)
+        embeddings = model.encode(narratives,show_progress_bar=True,batch_size=64,device=device)
     ncols = len(embeddings[0])
     attnames = [f'F{i}' for i in range(ncols)]
     return pd.DataFrame(embeddings,columns=attnames)
@@ -601,10 +601,8 @@ def encode_narratives( narratives ):
 if __name__ == "__main__":
     args = argv[1:]
     IDIR=args[0]
-    print(IDIR)
     target={'CMU':'Summary','MAILER':'Brief Description','NSF':'Synopsis','GRANTS':'Description','SAM':'Description','PIVOT':'Abstract','GFORWARD':'Description'}
     all_data = pd.concat([eval(file.split('/')[-1].split('_')[0])(filename=file,desc_att=target[file.split('/')[-1].split('_')[0]]).get_descriptions() for file in glob(f'{IDIR}/*_S*')],ignore_index=True)
-    print('all_data',all_data)
     df = all_data.drop_duplicates(subset=['description'],keep='last',ignore_index=True)#glob pattern matches GFORWARD first, which we would rather limit
     print('Torch enabled?: ',torch.cuda.is_available())
     embeddings = encode_narratives(df.description.astype(str))
