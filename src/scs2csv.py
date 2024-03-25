@@ -12,7 +12,7 @@ df['Due Date']= pd.to_datetime(df['Due Date'].astype(str),errors='coerce',exact=
 #df['Due Date']= pd.to_datetime(df['Due Date'].astype(str),errors='coerce',format='%m/%d/%Y')
 df['Post Date']= pd.to_datetime(df['Post Date'].astype(str),errors='coerce',exact=False)
 #df['Post Date']= pd.to_datetime(df['Post Date'].astype(str),errors='coerce',format='%m/%d/%Y')
-print(df)
+#print(df)
 
 for idx, chunk in enumerate(array_split(df,max(10*len(df)/int(args[1]),1))):
     i=str(idx).zfill(3)

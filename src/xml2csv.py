@@ -10,7 +10,7 @@ df.CloseDate = to_datetime(df.CloseDate.astype(str),errors='coerce',format='%m%d
 df=df.drop(df[(df['CloseDate']<datetime.now())].index)
 
 
-print('GRANT',df)
+#print('GRANT',df)
 df.to_csv(f'{args[0][:-4]}.csv',index=False)
 
 #cdf=DataFrame(columns=df.columns)

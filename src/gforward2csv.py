@@ -25,8 +25,8 @@ for line in data_lines:
         curr_record[curr_attr]+=line.strip()
 
 df=pd.DataFrame.from_dict(all_records,orient='index')
-print(df)
-print(df.columns)
+#print(df)
+#print(df.columns)
 df=df.drop_duplicates()
 #cdf=df
 cdf=pd.DataFrame(columns=df.columns)
@@ -39,7 +39,7 @@ for idx in df.index:# <- increases hits with GFORWARD which i am testing downwei
             row=df.loc[idx]
             row['Description']=c
             cdf.loc[len(cdf)]=row
-print('GFORWARD',cdf)
+#print('GFORWARD',cdf)
 #print(df)
 
 for idx, chunk in enumerate(array_split(cdf,10*len(cdf)/int(args[1]))):

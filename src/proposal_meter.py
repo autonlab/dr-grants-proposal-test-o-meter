@@ -178,7 +178,7 @@ class SCS(Raw_Data_Index):
             except:
                 pass
         if not dt:
-            print('Not a DT',date)
+            print('scs not a DT',date)
         return dt
     def to_dict(self,idx:int,similarity:float):
         row=self.df.iloc[idx]
@@ -275,7 +275,7 @@ class GFORWARD(Raw_Data_Index):
             except:
                 pass
         if not dt:
-            print(date)
+            print('gforward not a DT',date)
         return dt
     def to_dict(self,idx:int,similarity:float):
         row=self.df.iloc[idx]
