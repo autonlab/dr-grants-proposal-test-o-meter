@@ -88,7 +88,7 @@ if __name__ == "__main__":
     Parse arguments, read data, run experiment
     '''
     print('\n\n')
-    proposal_meter.show_color_banner_no_score("Dr. Grant's Proposal Meter!",0.99)
+    proposal_meter.show_color_banner_no_score("Dr. Grant's Proposal Test-O-Meter!",0.99)
     proposal_meter.show_one('How attractive is your idea to potential sponsors?',"Let's find out!")
     rgb = [240,245,250,255,46,33,92,226,202,199]
     prizes=['poor fish, try again!','clammy','harmless','mild','naughty, but nice','Wild','Burning!','Passionate!!','Hot Stuff!!!','UNCONTROLLABLE!!!!']

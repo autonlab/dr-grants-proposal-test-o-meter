@@ -178,13 +178,13 @@ class SCS(Raw_Data_Index):
             except:
                 pass
         if not dt:
-            print(date)
+            print('Not a DT',date)
         return dt
     def to_dict(self,idx:int,similarity:float):
         row=self.df.iloc[idx]
         result = self.mk_empty_row()
         result['Similarity']=similarity
-        result['Feed']='CMU Opportunity Mailer'
+        result['Feed']='SCS Resources Spreadsheet'
         result['Title']=row['Title']
         result['Sponsor']=row['Agency/Organization']
         result['SponsorType']=row['Type']
@@ -240,7 +240,7 @@ class CMU(Raw_Data_Index):
         result['URL']='https://www.cmu.edu/osp/limited-submissions/index.html'
         result['SolicitationURL']=row['Website']
         result['Amount']=row['Anticipated Funding Amount']
-        result['Description']=row['Summary']
+        result['Description']=row['Description']
         result['Status']='Open'
         return result
 
@@ -601,7 +601,7 @@ def encode_narratives( narratives ):
 if __name__ == "__main__":
     args = argv[1:]
     IDIR=args[0]
-    target={'CMU':'Summary','SCS':'Brief Description','NSF':'Synopsis','GRANTS':'Description','SAM':'Description','PIVOT':'Abstract','GFORWARD':'Description'}
+    target={'CMU':'Description','SCS':'Brief Description','NSF':'Synopsis','GRANTS':'Description','SAM':'Description','PIVOT':'Abstract','GFORWARD':'Description'}
     all_data = pd.concat([eval(file.split('/')[-1].split('_')[0])(filename=file,desc_att=target[file.split('/')[-1].split('_')[0]]).get_descriptions() for file in glob(f'{IDIR}/*_S*')],ignore_index=True)
     df = all_data.drop_duplicates(subset=['description'],keep='last',ignore_index=True)#glob pattern matches GFORWARD first, which we would rather limit
     print('Torch enabled?: ',torch.cuda.is_available())
