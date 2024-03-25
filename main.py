@@ -1,86 +1,74 @@
-'''
-/\\\\\\\\\\\\__________________________/\\\\\\\\\\\\__________________________________________________________/\\\\________________
-\/\\\////////\\\______________________/\\\//////////__________________________________________________________\///\\_______________
-_\/\\\______\//\\\____________________/\\\___________________________________________________________/\\\_______/\\/_______________
-__\/\\\_______\/\\\__/\\/\\\\\\\______\/\\\____/\\\\\\\__/\\/\\\\\\\___/\\\\\\\\\_____/\\/\\\\\\___/\\\\\\\\\\\_\//_/\\\\\\\\\\____
-___\/\\\_______\/\\\_\/\\\/////\\\_____\/\\\___\/////\\\_\/\\\/////\\\_\////////\\\___\/\\\////\\\_\////\\\////_____\/\\\//////____
-____\/\\\_______\/\\\_\/\\\___\///______\/\\\_______\/\\\_\/\\\___\///____/\\\\\\\\\\__\/\\\__\//\\\___\/\\\_________\/\\\\\\\\\\__
-_____\/\\\_______/\\\__\/\\\_____________\/\\\_______\/\\\_\/\\\__________/\\\/////\\\__\/\\\___\/\\\___\/\\\_/\\_____\////////\\\_
-______\/\\\\\\\\\\\\/___\/\\\___/\\\______\//\\\\\\\\\\\\/__\/\\\_________\//\\\\\\\\/\\_\/\\\___\/\\\___\//\\\\\_______/\\\\\\\\\\
-_______\////////////_____\///___\///________\////////////____\///___________\////////\//__\///____\///_____\/////_______\//////////
-
- /$$$$$$$                                                             /$$      /$$      /$$             /$$                        
-| $$__  $$                                                           | $$     | $$$    /$$$            | $$                        
-| $$  \ $$ /$$$$$$   /$$$$$$   /$$$$$$   /$$$$$$   /$$$$$$$  /$$$$$$ | $$     | $$$$  /$$$$  /$$$$$$  /$$$$$$    /$$$$$$   /$$$$$$ 
-| $$$$$$$//$$__  $$ /$$__  $$ /$$__  $$ /$$__  $$ /$$_____/ |____  $$| $$     | $$ $$/$$ $$ /$$__  $$|_  $$_/   /$$__  $$ /$$__  $$
-| $$____/| $$  \__/| $$  \ $$| $$  \ $$| $$  \ $$|  $$$$$$   /$$$$$$$| $$     | $$  $$$| $$| $$$$$$$$  | $$    | $$$$$$$$| $$  \__/
-| $$     | $$      | $$  | $$| $$  | $$| $$  | $$ \____  $$ /$$__  $$| $$     | $$\  $ | $$| $$_____/  | $$ /$$| $$_____/| $$      
-| $$     | $$      |  $$$$$$/| $$$$$$$/|  $$$$$$/ /$$$$$$$/|  $$$$$$$| $$     | $$ \/  | $$|  $$$$$$$  |  $$$$/|  $$$$$$$| $$      
-|__/     |__/       \______/ | $$____/  \______/ |_______/  \_______/|__/     |__/     |__/ \_______/   \___/   \_______/|__/      
-                             | $$                                                                                                  
-                             | $$                                                                                                  
-                             |__/                                                                                                  
-'''
-from glob import glob
 from os.path import exists
 import pandas as pd
-import pickle
 from sentence_transformers import SentenceTransformer
-import torch
 from sklearn.metrics.pairwise import cosine_similarity
 import faulthandler
 from argparse import ArgumentParser
 from warnings import filterwarnings
-from os import system
-from datetime import datetime, timedelta
-from numpy import isnan
-from dateutil.parser import parse
+from datetime import datetime
 from src import proposal_meter
-import subprocess
-# bart-large-cnn
 from transformers import pipeline
 
-IDIR='./index'
 
-def display( ds, sorted_ds, i):
-    fn = ds.loc[sorted_ds.index[i]].filename
-    row = ds.loc[sorted_ds.index[i]].row
+IDIR = './index'
+EMBEDDINGS=f'{IDIR}'+'/embeddings.pkl'
+TARGET = {'NSF': 'Synopsis',
+            'SCS': 'Brief Description',
+            'SAM': 'Description',
+            'GRANTS': 'Description',
+            'GFORWARD': 'Description',
+            'CMU': 'Summary',
+            'PIVOT': 'Abstract',
+            'EXTERNAL': 'Description'
+            }
+
+
+def display( ds, nearest_neighbors, i):
+    #raw_data = read_raw_data(ds, nearest_neighbors, i)
+    fn = ds.loc[nearest_neighbors.index[i]].filename
+    row = ds.loc[nearest_neighbors.index[i]].row
     source=fn.split('/')[-1].split('_')[0]
     funcname=eval('proposal_meter.'+source)
-    raw_data = funcname(fn,target[source])
-    raw_data.print(row,sorted_ds.iloc[i].similarity)
+    raw_data = funcname(fn,TARGET[source])
+    raw_data.print(row,nearest_neighbors.iloc[i].similarity)
 
-def description( ds, sorted_ds, i):
-    fn = ds.loc[sorted_ds.index[i]].filename
-    row = ds.loc[sorted_ds.index[i]].row
+
+def description( ds, nearest_neighbors, i):
+    #raw_data = read_raw_data(ds, nearest_neighbors, i)
+    fn = ds.loc[nearest_neighbors.index[i]].filename
+    row = ds.loc[nearest_neighbors.index[i]].row
     source=fn.split('/')[-1].split('_')[0]
     funcname=eval('proposal_meter.'+source)
-    raw_data = funcname(fn,target[source])
+    raw_data = funcname(fn,TARGET[source])
     proposal_meter.show_one_limitless(i,raw_data.df.loc[row].Description)
 
 
-def summarize( ds, sorted_ds, i ):
+def summarize( ds, nearest_neighbors, i ):
     if not exists('summarizer.model'):
         summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
         summarizer.save_pretrained('summarizer.model')
     else:
         summarizer = pipeline("summarization", model='summarizer.model')
-    fn = ds.loc[sorted_ds.index[i]].filename
-    row = ds.loc[sorted_ds.index[i]].row
+    #line = get_neighbor(ds, nearest_neighbors, i)
+    fn = ds.loc[nearest_neighbors.index[i]].filename
+    row = ds.loc[nearest_neighbors.index[i]].row
     source=fn.split('/')[-1].split('_')[0]
     funcname=eval('proposal_meter.'+source)
-    raw_data = funcname(fn,target[source])
+    raw_data = funcname(fn,TARGET[source])
     attname = raw_data.description_attribute
-    line=raw_data.to_dict(row,sorted_ds.loc[i].similarity)
+    line=raw_data.to_dict(row,nearest_neighbors.loc[i].similarity)
     summary = summarizer(line['Description'], max_length=280, min_length=140, do_sample=False)[0]['summary_text']
-    proposal_meter.show_one_limitless(f'{line["Title"]} Summary',summary)#ds.loc[sorted_ds.index[i]].Description)
+    proposal_meter.show_one_limitless(f'{line["Title"]} Summary',summary)#ds.loc[nearest_neighbors.index[i]].Description)
+
 
 def encode_prompt( prompt ):
     model = SentenceTransformer('all-mpnet-base-v2')
     return model.encode([prompt])
 
+
 def read_narrative_embeddings( filename:str ):
     return pd.read_pickle(filename)
+
 
 def sort_by_similarity_to_prompt( prompt, embedded_narratives, k):
     embedded_prompt = encode_prompt(prompt)
@@ -89,25 +77,134 @@ def sort_by_similarity_to_prompt( prompt, embedded_narratives, k):
     result.sort_values('similarity',inplace=True,ascending=False)
     return result
 
-def human_readable_dollars( num:float ):
+
+def human_readable_dollars(num: float):
+    """Convert a number of dollars to a human-readable string
+
+    Args:
+        num (float): Number of dollars
+
+    Returns:
+        str: Human-readable string e.g. '1.2M'
+    """
     for unit in ('', 'K', 'M', 'B'):
-        if abs(num)<1024.0:
+        if abs(num) < 1024.0:
             return f'{num:3.1f}{unit}'
-        num/=1024.0
+        num /= 1024.0
     return f'{num:.1f}T'
 
+
+def show_prizes():
+    """Show a color-coded tier list for the Proposal Test-O-Meter
+
+    Args:
+        None: Uses hard-coded values for prizes and colors
+
+    Returns:
+        None: Prints to console
+    """
+    prizes = ['poor fish, try again!', 'clammy', 'harmless', 'mild',
+              'naughty,  but nice', 'Wild', 'Burning!', 'Passionate!!',
+              'Hot Stuff!!!', 'UNCONTROLLABLE!!!!']
+    rgb = [240, 245, 250, 255, 46, 33, 92, 226, 202, 199]
+    for pidx in reversed(range(len(prizes))):
+        color = rgb[pidx]
+        low_lim = pidx/len(prizes)
+        hi_lim = (pidx+1)/len(prizes)
+        pname = prizes[pidx]
+        metric = f'Cosine Similarity in [{low_lim:.1f},{hi_lim:.1f})'
+        print(f' - \033[38;5;{color}m{metric}\033[0m -- {pname}')
+
+
+def show_banner():
+    """Show a color banner for the Proposal Test-O-Meter
+
+    Args:
+        None
+
+    Returns:
+        None: Prints to console
+    """
+    proposal_meter.show_color_banner_no_score(
+        "Dr. Grant's Proposal Test-O-Meter!",
+        0.99
+    )
+    proposal_meter.show_one(
+        'How attractive is your idea to potential sponsors?',
+        "Let's find out!"
+    )
+
+
+def show_prompt( prompt:str ):
+    """Show the prompt supplied for the Proposal Test-O-Meter
+
+    Args:
+        prompt (str): The prompt supplied by the user
+
+    Returns:
+        None: Prints to console
+    """
+    print(f' - Prompt: {prompt}')
+
+
+def show_flags(k: int, prompt: str, active: bool, output: str, title: str, interactive: bool):
+    """Show the flags supplied for the Proposal Test-O-Meter
+
+    Args:
+        k (int): Number of matches to return
+        active (bool): Restrict search to CFPs/FOAs that have not expired
+        output (str): CSV file to store output
+        title (str): Title for results if multiple queries
+        interactive (bool): Allows user to explore/summarize results by hand
+    """
+
+    print(f'\033[38;5;84m\nSPECIFICATION: \033[0m')
+    print(f'Search for {k} most cosine-similar funding opportunity descriptions based on the "{title}" prompt:')
+    show_prompt(prompt)
+    if active:
+        print(' - Restricting search to opportunities that have not expired')
+    if interactive:
+        print(' - Interactive mode enabled')
+    if output:
+        print(f' - Results will be saved to {output}')
+
+
+def show_data_stats(ds):
+    """Show statistics about the data
+
+    Args:
+        ds (pd.DataFrame): The data
+
+    Returns:
+        None: Prints to console
+    """
+    print(f' - Searching {len(ds)} opportunities:')
+    feeds = []
+    for source in ds.filename.unique():
+        feed = source.split('_')[0].split('/')[-1]
+        if feed not in feeds:
+            feeds.append(feed)
+    for feed in feeds:
+        print(f'   -- {feed}: {len(ds[ds.filename.str.contains(feed)])} opportunities')
+    print(' - \033[38;5;202mData Sources Last Updated: 03/25/2024\033[0m')
+
+
+def read_raw_data( ds, nearest_neighbors, i):
+    fn = ds.loc[i].filename
+    source = fn.split('/')[-1].split('_')[0]
+    funcname = eval('proposal_meter.' + source)
+    raw_data = funcname(fn, TARGET[source])
+    return raw_data
+
+def get_neighbor( ds, nearest_neighbors, i):
+    raw_data = read_raw_data(ds, nearest_neighbors, i)
+    row = ds.loc[i].row
+    line = raw_data.to_dict(row, nearest_neighbors.loc[i].similarity)
+    return line
+
+
 if __name__ == "__main__":
-    '''
-    Parse arguments, read data, run experiment
-    '''
-    print('\n\n')
-    proposal_meter.show_color_banner_no_score("Dr. Grant's Proposal Test-O-Meter!",0.99)
-    proposal_meter.show_one('How attractive is your idea to potential sponsors?',"Let's find out!")
-    rgb = [240,245,250,255,46,33,92,226,202,199]
-    prizes=['poor fish, try again!','clammy','harmless','mild','naughty, but nice','Wild','Burning!','Passionate!!','Hot Stuff!!!','UNCONTROLLABLE!!!!']
-    for i in reversed(range(len(prizes))):
-        subprocess.run(["echo", "-e", '\e[38;5;%dmCosine Similarity in [%.1f,%.1f)\e[0m -- %s'%(rgb[i],i/len(prizes),(i+1)/len(prizes),prizes[i])])
-    embeddingFN= f'{IDIR}/embeddings.pkl'
+    
     faulthandler.enable()
     filterwarnings('ignore')
     p = ArgumentParser()
@@ -117,44 +214,42 @@ if __name__ == "__main__":
                    help='Number of matches to return')
     p.add_argument('-a', '--active', default=False, action='store_true',
                    help='Restrict search to CFPs that have not expired.')
-    p.add_argument('-r', '--recent', default=-1,
-                   help='Restrict search to CFPs in the last r years')
     p.add_argument('-o', '--output',
                    help='CSV file to store output')
-    p.add_argument('-s', '--subset', default='*_S*',
-                   help='Glob pattern to match specific records in data folder')
     p.add_argument('-t', '--title', default='CLI prompt',
                    help='Title for results if multiple queries')
     p.add_argument('-i', '--interactive', default=False, action='store_true',
                    help='Allows user to explore/summarize results by hand')
+    
     args = p.parse_args()
-
-    if not torch.cuda.is_available():
-        print('Torch is not enabled.')
     k = int(args.k)
-    r = int(args.recent)
     prompt = args.prompt
-    ds = read_narrative_embeddings(embeddingFN)
-    print(f'Searching {len(ds)} opportunities')
+    ds = read_narrative_embeddings(EMBEDDINGS)
 
-    sorted_ds = sort_by_similarity_to_prompt(prompt,ds,k)
-    target={'NSF':'Synopsis','SCS':'Brief Description','SAM':'Description','GRANTS':'Description','GFORWARD':'Description','CMU':'Summary','PIVOT':'Abstract','EXTERNAL':'Description'}
+    show_flags(k, prompt, args.active,
+               args.output, args.title, args.interactive)
+    show_data_stats(ds)
+    print()
 
-    print('\033[38;5;84m\nPROMPT: \033[0m%s\n'%prompt)
-    csv_output=None
-    j=0
-    titles=[]
+    nearest_neighbors = sort_by_similarity_to_prompt(prompt, ds, k)
 
-    for i in sorted_ds.index:
-        #if j>=k:
-            #break
+    csv_output = None
+    j = 0
+    titles = []
+
+    show_banner()
+    show_prizes()
+    print(f'******* Top {k} *******')
+    for i in nearest_neighbors.index:
+        #raw_data = read_raw_data(ds, nearest_neighbors, i)
+        #line = get_neighbor(ds, nearest_neighbors, i)
         fn = ds.loc[i].filename
         row = ds.loc[i].row
-        source=fn.split('/')[-1].split('_')[0]
-        funcname=eval('proposal_meter.'+source)
-        raw_data = funcname(fn,target[source])
-        line=raw_data.to_dict(row,sorted_ds.loc[i].similarity)
-        if line['Similarity']<.45 and j>=k or j>8: break
+        source = fn.split('/')[-1].split('_')[0]
+        funcname = eval('proposal_meter.'+source)
+        raw_data = funcname(fn,TARGET[source])
+        line = raw_data.to_dict(row,nearest_neighbors.loc[i].similarity)
+        if line['Similarity'] < .45 and j >= k or j > 8: break
         if line['Title'] in titles or any([line['Title'][:len(line['Title'])*3//4] in t for t in titles]):
             continue
         if args.active:
@@ -175,32 +270,31 @@ if __name__ == "__main__":
             j+=1
             titles.append(line['Title'])
         if args.output:
-            raw_data.print_title(row,sorted_ds.loc[i].similarity)
+            raw_data.print_title(row,nearest_neighbors.loc[i].similarity)
             if csv_output is None:
-                csv_output=raw_data.to_csv(row,sorted_ds.loc[i].similarity)
+                csv_output = raw_data.to_csv(row, nearest_neighbors.loc[i].similarity)
             else:
-                res=raw_data.to_csv(row,sorted_ds.loc[i].similarity).iloc[0]
+                res = raw_data.to_csv(row, nearest_neighbors.loc[i].similarity).iloc[0]
                 try:
                     res['DueDates']=str(res['DueDates'])
                 except:
                     res['DueDates']='None on posting'
                 csv_output.loc[len(csv_output)]=res
         else:
-            #summary = summarizer(sorted_ds.loc[i], max_length=280, min_length=140, do_sample=False)
-            #raw_data.print(row,sorted_ds.loc[i].similarity,summarizer)
-            raw_data.print(row,sorted_ds.loc[i].similarity)
+            raw_data.print_title(row,nearest_neighbors.loc[i].similarity)
+            #raw_data.print(row,nearest_neighbors.loc[i].similarity)
 
     #****** for fun
     print('******* Bottom 3 *******')
-    for opp in sorted_ds[-3:].index:
+    for opp in nearest_neighbors[-3:].index:
         fn = ds.loc[opp].filename
-        row=ds.loc[opp].row
-        source=fn.split('/')[-1].split('_')[0]
-        funcname=eval('proposal_meter.'+source)
-        raw_data = funcname(fn,target[source])
-        line=raw_data.to_dict(row,sorted_ds.loc[opp].similarity)
+        row = ds.loc[opp].row
+        source = fn.split('/')[-1].split('_')[0]
+        funcname = eval('proposal_meter.' + source)
+        raw_data = funcname(fn, TARGET[source])
+        line = raw_data.to_dict(row, abs(nearest_neighbors.loc[opp].similarity))
         titles.append(line['Title'])
-        raw_data.print_title(row,sorted_ds.loc[opp].similarity)
+        raw_data.print_title(row, abs(nearest_neighbors.loc[opp].similarity))
     #******
     if args.output:
         csv_output['Prompt']=prompt
@@ -211,19 +305,19 @@ if __name__ == "__main__":
         csv_output['SubmissionDetails']='See URL'
         csv_output.to_csv(args.output,index=False, mode='a', header=not exists(args.output))
 
-    usercmd='help'
+    menu_option = 'help'
     if args.interactive:
-        while usercmd!='quit':
-            if usercmd=='help':
-                print('Menu Options: summarize, display, description, help, quit')
-            if usercmd=='summarize':
-                neighbor=int(input('kth neighbor= '))
-                summarize(ds,sorted_ds,neighbor)
-            if usercmd=='display':
-                neighbor=int(input('kth neighbor= '))
-                print(neighbor,type(neighbor))
-                display(ds,sorted_ds,neighbor)
-            if usercmd=='description':
-                neighbor=int(input('kth neighbor= '))
-                description(ds,sorted_ds,neighbor)
-            usercmd=str(input('Next command: '))
+        while menu_option != 'quit':
+            if menu_option == 'help':
+                print('Options: summarize, display, description, help, quit')
+            if menu_option == 'summarize':
+                neighbor = int(input('kth neighbor= '))
+                summarize(ds, nearest_neighbors, neighbor)
+            if menu_option == 'display':
+                neighbor = int(input('kth neighbor= '))
+                print(neighbor, type(neighbor))
+                display(ds, nearest_neighbors, neighbor)
+            if menu_option == 'description':
+                neighbor = int(input('kth neighbor= '))
+                description(ds, nearest_neighbors, neighbor)
+            menu_option = str(input('Next command: '))
