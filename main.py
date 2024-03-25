@@ -123,7 +123,7 @@ if __name__ == "__main__":
     print(f'Searching {len(ds)} opportunities')
 
     sorted_ds = sort_by_similarity_to_prompt(prompt,ds,k)
-    target={'NSF':'Synopsis','MAILER':'Brief Description','SAM':'Description','GRANTS':'Description','GFORWARD':'Description','CMU':'Summary','PIVOT':'Abstract'}
+    target={'NSF':'Synopsis','SCS':'Brief Description','SAM':'Description','GRANTS':'Description','GFORWARD':'Description','CMU':'Summary','PIVOT':'Abstract'}
 
     print('\033[38;5;84m\nPROMPT: \033[0m%s\n'%prompt)
     csv_output=None

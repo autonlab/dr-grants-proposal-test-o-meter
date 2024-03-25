@@ -147,19 +147,19 @@ class NSF(Raw_Data_Index):
         result['Sponsor']='NSF'
         return result
         
-class MAILER(Raw_Data_Index):
+class SCS(Raw_Data_Index):
     def __init__(self,filename:str,desc_att:str):
         super().__init__(filename,desc_att)
         self.load_data()
     def load_data(self):
-        self.df=pd.read_csv(self.filename)
+        self.df=pd.read_csv(self.filename,lineterminator='\n')#source has ^M in the descriptions
     def get_descriptions(self):
         return pd.DataFrame({'filename':self.filename,'row':self.df.index,'description':self.df[self.description_attribute]})
     def print_title(self,row:int,similarity:float):
         show_color_banner_no_score(self.df.iloc[row]['Title'],similarity)
     def print(self,idx:int,similarity:float):
         show_color_banner(self.df.iloc[idx]['Title'],similarity)
-        show_one('Posted on','CMU Opportunity Mailer')
+        show_one('Posted on','SCS Resource Spreadsheet')
         for attname in self.df.columns:
             if attname==self.description_attribute:
                 show_one_underline(attname,self.df.iloc[idx][attname])
@@ -601,7 +601,7 @@ def encode_narratives( narratives ):
 if __name__ == "__main__":
     args = argv[1:]
     IDIR=args[0]
-    target={'CMU':'Summary','MAILER':'Brief Description','NSF':'Synopsis','GRANTS':'Description','SAM':'Description','PIVOT':'Abstract','GFORWARD':'Description'}
+    target={'CMU':'Summary','SCS':'Brief Description','NSF':'Synopsis','GRANTS':'Description','SAM':'Description','PIVOT':'Abstract','GFORWARD':'Description'}
     all_data = pd.concat([eval(file.split('/')[-1].split('_')[0])(filename=file,desc_att=target[file.split('/')[-1].split('_')[0]]).get_descriptions() for file in glob(f'{IDIR}/*_S*')],ignore_index=True)
     df = all_data.drop_duplicates(subset=['description'],keep='last',ignore_index=True)#glob pattern matches GFORWARD first, which we would rather limit
     print('Torch enabled?: ',torch.cuda.is_available())
