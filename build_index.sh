@@ -2,7 +2,7 @@
 IDIR=./index
 RDIR=./raw
 SDIR=./src
-MAXLINES=5000
+MAXLINES=2000
 
 if [ ! -d ${IDIR} ]; then
 	mkdir ${IDIR}
@@ -17,4 +17,4 @@ for FILE in ${SDIR}/get_*; do
 done
 
 echo 'Building index for Dr. Grants Proposal Test-O-Meter'
-python ${SDIR}/proposal_meter.py ${IDIR}
+python ${SDIR}/compute_embeddings.py ${IDIR}
