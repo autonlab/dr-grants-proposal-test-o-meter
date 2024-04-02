@@ -1,6 +1,7 @@
 # dr-grants-proposal-test-o-meter
 How attractive is your research proposal to potential sponsors?  Let's find out!
 
+![Dr. Grant's Proposal Test-O-Meter](./assets/dr-grant.gif)
 
 ## Installation
 ```
