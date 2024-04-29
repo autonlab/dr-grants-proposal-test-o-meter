@@ -38,7 +38,8 @@ ATTRIBUTES = [
     'SolicitationURL',
     'Description',
     'Prompt',
-    'QueryName'
+    'QueryName',
+    'Authors'
 ]
 GG_ELIGAPP = {
     99: 'Unrestricted',
@@ -565,7 +566,8 @@ class SAM(Raw_Data_Index):
                    '%Y-%m-%d %H:%M:%S',
                    '%Y-%m-%dT%H:%M:%S',
                    '%Y-%m-%dT%H:%M+%S:%U',
-                   '%Y-%m-%dT%H:%M%:%S+%U:%W'
+                   '%Y-%m-%dT%H:%M%:%S+%U:%W',
+                   '%Y-%m-%dT%H:%M:%S+%U:%W'
                    ]
         dt = None
         for f in formats:
@@ -626,4 +628,92 @@ class SAM(Raw_Data_Index):
         result['SolicitationURL'] = row['AdditionalInfoLink']
         result['URL'] = row['Link']
         result['Description'] = row['Description']
+        return result
+
+
+class ARXIV(Raw_Data_Index):
+    def __init__(self, filename: str, desc_att: str):
+        super().__init__(filename, desc_att)
+        self.load_data()
+
+    def load_data(self):
+        self.df = pd.read_csv(self.filename, quotechar='"')
+
+    def get_descriptions(self):
+        return pd.DataFrame({'source': self.__class__.__name__,
+                             'filename': self.filename,
+                             'row': self.df.index,
+                             'description': self.df[self.description_attribute]
+                             })
+
+    def date2MMDDYYYY(self, date: str):
+        if isinstance(date, float):
+            if isnan(date):
+                return ''
+            else: print('stumped', date)
+        if '.' in date:
+            date = date.split('.')[0].strip()
+        formats = ['%a, %d %b %Y %H:%M:%S %Z',
+                   '%Y-%m-%d'
+                   ]
+        dt = None
+        for f in formats:
+            try:
+                dt = datetime.strptime(date, f).strftime('%m/%d/%Y')
+                break
+            except:
+                pass
+        if not dt:
+            print('stumped!', date)
+        return dt
+
+    def to_dict(self, idx: int, similarity: float):
+        row = self.df.iloc[idx]
+        result = self.mk_empty_row()
+        result['Similarity'] = similarity
+        result['Feed'] = 'arxiv.org'
+        result['FeedID'] = row['id']
+        result['Title'] = row['title']
+        result['ProgramID'] = row['categories']
+        result['Sponsor'] = 'NA'  # row['Department/Ind.Agency']
+        # CGAC
+        # Sub-Tier
+        # FPDS Code
+        # Office
+        # AAC Code
+        result['Posted'] = self.date2MMDDYYYY(row['version_created'])
+        result['AwardType'] = 'NA'  # row['Type']
+        # BaseType
+        # ArchiveType
+        #result['DueDates'] = {'ArchiveDate': self.date2MMDDYYYY(row['ArchiveDate']),
+                              #'ResponseDeadLine': self.date2MMDDYYYY(row['ResponseDeadLine']),
+                              #'AwardDate': self.date2MMDDYYYY(row['AwardDate'])
+                              #}
+        result['CloseDate'] = self.date2MMDDYYYY(row['last_update'])
+        # SetASideCode
+        # SetASide
+        # NaicsCode
+        # ClassificationCode
+        # PopStreetAddress
+        # PopCity
+        # PopState
+        #result['ActivityLocation'] = row['PopZip']
+        # Pop Country
+        result['Status'] = row['journal_ref']
+        # AwardNumber
+        #result['Amount'] = row['Award$']
+        # Awardee
+        #result['Contacts'] = {'Title': row['PrimaryContactTitle'],
+                              #'Name': row['PrimaryContactFullname'],
+                              #'Email': row['PrimaryContactEmail'],
+                              #'Phone': row['PrimaryContactPhone'],
+                              #'Fax': row['PrimaryContactFax']
+                              #}
+        # SecondaryContactTitle, SecondaryContactFullname, SecondaryContactEmail, SecondaryContactPhone,SecondaryConteactFax
+        #result['SponsorType'] = row['OrganizationType']
+        # State, City, ZipCode, CountryCode
+        result['SolicitationURL'] = row['doi']
+        result['URL'] = f'https://arxiv.org/abs/{row["id"]}'
+        result['Description'] = row['abstract']
+        result['Authors'] = row['authors']
         return result

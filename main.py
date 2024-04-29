@@ -52,6 +52,8 @@ if __name__ == "__main__":
                    help='Title for results if multiple queries')
     p.add_argument('-s', '--summary', default=False, action='store_true',
                    help='Prints AI-generated summary of CFP/FOA descriptions')
+    p.add_argument('-f', '--feed', default='*', type=str,
+                   help='Which feed(s) to search')
     args = p.parse_args()
 
     proposal_meter.show_flags(args.k,
@@ -61,7 +63,7 @@ if __name__ == "__main__":
                               args.title
                               )
 
-    experiment = proposal_meter.Experiment(args.prompt, EMBEDDINGS, args.k)
+    experiment = proposal_meter.Experiment(args.prompt, EMBEDDINGS, args.k, args.feed)
     experiment.run()
     results = experiment.select_results(range(10*args.k),args.active)
     results.drop_duplicates(subset=['Title'],

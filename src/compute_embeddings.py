@@ -10,10 +10,10 @@ Returns:
 from typing import List
 from sys import argv
 from glob import glob
-import pandas as pd
-import torch
 from sentence_transformers import SentenceTransformer
-import data as DATA
+import pandas
+import torch
+import data as DATA_CLASSES
 
 MODEL_NAME = 'all-mpnet-base-v2'
 DESCRIPTION_ATTR = {'CMU': 'Description',
@@ -23,11 +23,12 @@ DESCRIPTION_ATTR = {'CMU': 'Description',
                     'GRANTS': 'Description',
                     'SAM': 'Description',
                     'PIVOT': 'Abstract',
-                    'GFORWARD': 'Description'
+                    'GFORWARD': 'Description',
+                    'ARXIV': 'abstract'
                     }
 
 
-def encode_narratives(N: List[str]) -> pd.DataFrame:
+def encode_narratives(N: List[str]) -> pandas.DataFrame:
     """Encode narratives using SentenceTransformer. Multi-GPU support.
 
     Model is set to all-mpnet-base-v2.
@@ -36,7 +37,7 @@ def encode_narratives(N: List[str]) -> pd.DataFrame:
         N (List[str]): List of narratives to encode. Descriptions of CFPs/FOAs.
 
     Returns:
-        pd.DataFrame: DataFrame with #narratives x #dims.
+        pandas.DataFrame: DataFrame with #narratives x #dims.
     """
     transformer = SentenceTransformer(MODEL_NAME)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -45,8 +46,8 @@ def encode_narratives(N: List[str]) -> pd.DataFrame:
         pool = transformer.start_multi_process_pool(target_devices=tds)
         embs = transformer.encode_multi_process(N,
                                                 pool,
-                                                batch_size=128,
-                                                chunk_size=len(N)/100
+                                                batch_size=1024,  # 128
+                                                chunk_size=len(N)/1000  # 100
                                                 )
         transformer.stop_multi_process_pool(pool)
     else:
@@ -57,7 +58,7 @@ def encode_narratives(N: List[str]) -> pd.DataFrame:
                                   )
     ncols = len(embs[0])
     attnames = [f'F{i}' for i in range(ncols)]
-    return pd.DataFrame(embs, columns=attnames)
+    return pandas.DataFrame(embs, columns=attnames)
 
 
 def glob2objects(glob_pattern: str):
@@ -71,20 +72,21 @@ def glob2objects(glob_pattern: str):
     """
     files = list(glob(glob_pattern))
     classes = [f.split('/')[-1].split('_')[0] for f in files]
-    objs = [getattr(DATA, c)(f, DESCRIPTION_ATTR[c]) for f, c in zip(files, classes)]
+    zset = zip(files, classes)
+    objs = [getattr(DATA_CLASSES, c)(f, DESCRIPTION_ATTR[c]) for f, c in zset]
     return objs
 
 
-def objects2descriptions(objects: list):
+def objects2descriptions(Objs: list):
     """Convert objects to descriptions.
 
     Args:
         objects (list): List of class objects
 
     Returns:
-        pd.DataFrame: DataFrame with descriptions read from objects
+        pandas.DataFrame: DataFrame with descriptions read from objects
     """
-    return pd.concat([_.get_descriptions() for _ in objects],
+    return pandas.concat([obj.get_descriptions() for obj in Objs],
                      ignore_index=True
                      )
 
@@ -98,13 +100,8 @@ if __name__ == "__main__":
         keep='last',
         ignore_index=True
         )
-    #df = df.drop_duplicates(
-        #subset=['title'],
-        #keep='last',
-        #ignore_index=True
-        #)
     if not torch.cuda.is_available():
         print('Warning: No GPU detected. Using CPU.')
     embeddings = encode_narratives(df.description.astype(str))
-    result = pd.concat([df, embeddings], axis=1)
+    result = pandas.concat([df, embeddings], axis=1)
     result.to_pickle(f'{IDIR}/embeddings.pkl')

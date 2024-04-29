@@ -29,7 +29,8 @@ TARGET = {'NSF': 'Synopsis',
             'GFORWARD': 'Description',
             'CMU': 'Summary',
             'PIVOT': 'Abstract',
-            'EXTERNAL': 'Description'
+            'EXTERNAL': 'Description',
+            'ARXIV': 'abstract'
             }
 DRGRANT = 'all-mpnet-base-v2'
 DRGIST = 'facebook/bart-large-cnn'
@@ -65,7 +66,8 @@ def results2csv(results: pd.DataFrame, output_fn: str, prompt: str, qname: str):
     results['ApplicantLocation'] = 'See URL'
     results['ActivityLocation'] = 'See URL'
     results['SubmissionDetails'] = 'See URL'
-    results.to_csv(output_fn, index=False, header=results.columns)
+    #results.to_csv(output_fn, index=False, header=results.columns)
+    results.to_csv(output_fn, index=False, mode='a', header=not exists(output_fn))
 
 
 def summarize(text: str):
@@ -246,17 +248,20 @@ def show_data_stats(ds):
             feeds.append(feed)
     for feed in feeds:
         print(f'   -- {feed}: {len(ds[ds.filename.str.contains(feed)])} opportunities')
-    print(' - \033[38;5;202mData Sources Last Updated: 03/25/2024\033[0m')
+    print(' - \033[38;5;202mData Sources Last Updated: 04/25/2024\033[0m')
 
 
 class Experiment():
-    def __init__(self, prompt:str, embeddingsFN:str, k:int):
+    def __init__(self, prompt:str, embeddingsFN:str, k:int, feed:str):
         self.prompt = prompt
         self.embeddingsFN = embeddingsFN
         self.k = k
         self.active = False
+        self.feed = feed
     def run(self):
         self.embeddings = read_narrative_embeddings(self.embeddingsFN)
+        if self.feed != '*':
+            self.embeddings = self.embeddings[~self.embeddings.filename.str.contains(self.feed)]
         show_data_stats(self.embeddings)
         self.nearest_neighbors = sort_by_similarity_to_prompt(self.prompt,self.embeddings,self.k)
 
