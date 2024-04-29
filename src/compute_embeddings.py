@@ -87,8 +87,7 @@ def objects2descriptions(Objs: list):
         pandas.DataFrame: DataFrame with descriptions read from objects
     """
     return pandas.concat([obj.get_descriptions() for obj in Objs],
-                     ignore_index=True
-                     )
+                         ignore_index=True)
 
 
 if __name__ == "__main__":

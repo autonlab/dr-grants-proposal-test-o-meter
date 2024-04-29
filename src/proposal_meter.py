@@ -1,97 +1,124 @@
+"""
+Module for the Proposal Test-O-Meter
+"""
 import textwrap
-from typing import List
 from os.path import exists
-from sys import argv
-from os import system, environ
-import subprocess
-from glob import glob
-import pandas as pd
-import pickle
+from os import environ
+from datetime import datetime
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-import torch
-from argparse import ArgumentParser
-from datetime import datetime
-from math import isnan
 from transformers import pipeline
+import pandas as pd
 from src import data as DATA
 
 
-environ["TOKENIZERS_PARALLELISM"]="false" #parallel GPU encoding makes subprocess run statement throw warning over parllelism
-N_TIERS=11
-PRIZES_RGB = [240,245,250,255,46,33,92,226,202,199]
-PRINTMAXCHARS=80
-PRINTMAXLINES=12
+environ["TOKENIZERS_PARALLELISM"] = "false"  # parallel GPU throws warning
+N_TIERS = 11
+PRIZES_RGB = [240, 245, 250, 255, 46, 33, 92, 226, 202, 199]
+PRINTMAXCHARS = 80
+PRINTMAXLINES = 12
 TARGET = {'NSF': 'Synopsis',
-            'SCS': 'Brief Description',
-            'SAM': 'Description',
-            'GRANTS': 'Description',
-            'GFORWARD': 'Description',
-            'CMU': 'Summary',
-            'PIVOT': 'Abstract',
-            'EXTERNAL': 'Description',
-            'ARXIV': 'abstract'
-            }
+          'SCS': 'Brief Description',
+          'SAM': 'Description',
+          'GRANTS': 'Description',
+          'GFORWARD': 'Description',
+          'CMU': 'Summary',
+          'PIVOT': 'Abstract',
+          'EXTERNAL': 'Description',
+          'ARXIV': 'abstract'
+          }
 DRGRANT = 'all-mpnet-base-v2'
 DRGIST = 'facebook/bart-large-cnn'
 
 
-def results2console(results:pd.DataFrame,print_summary=False):
+def results2console(results: pd.DataFrame, print_summary=False):
+    """Print the results of the Proposal Test-O-Meter to the console
+
+    Args:
+        results (pd.DataFrame): The results of the Proposal Test-O-Meter
+        print_summary (bool, optional): Defaults to False.
+    """
     show_testometer_banner()
     show_prizes()
-    print(f'\n*** Dr. Grant\'s ({DRGRANT}) top {len(results)} picks and Dr. Gist\'s ({DRGIST}) summaries ***')
+    print(f"""\n*** Dr. Grant\'s ({DRGRANT}) top {len(results)} picks
+          and Dr. Gist\'s ({DRGIST}) summaries ***""")
     for i in range(len(results)):
         x = results.iloc[i]
-        show_prize_banner(f'{x.Title}',x.Similarity)
-        show_one('URL',x['URL'])
+        show_prize_banner(f'{x.Title}', x.Similarity)
+        show_one('URL', x['URL'])
         if print_summary:
             description = summarize(x['Description'])
-            show_one('AI Summary',description)
+            show_one('AI Summary', description)
         else:
             description = x['Description']
             show_one('FOA Description', description, limit=True)
         
 
 def results2csv(results: pd.DataFrame, output_fn: str, prompt: str, qname: str):
+    """ Write the results of the Proposal Test-O-Meter to a CSV file
+
+    Args:
+        results (pd.DataFrame): The results of the Proposal Test-O-Meter
+        output_fn (str): The filename for the output CSV
+        prompt (str): The prompt that generated these results
+        qname (str): The name of the query
+    """
     show_testometer_banner()
     show_prizes()
     print(f'\n*** Dr. Grant\'s ({DRGRANT}) top {len(results)} picks ***')
-    #print(f'\n*** Top {len(results)} nearest neighbors according to {DRGRANT} ***')
     for i in range(len(results)):
         x = results.iloc[i]
-        show_prize_banner(f'{x.Title}', x.Similarity, show_score=True, limit=False)
+        show_prize_banner(f'{x.Title}', x.Similarity,
+                          show_score=True, limit=False)
     results['Prompt'] = prompt
     results['QueryName'] = qname
     results['Eligibility'] = 'See URL'
     results['ApplicantLocation'] = 'See URL'
     results['ActivityLocation'] = 'See URL'
     results['SubmissionDetails'] = 'See URL'
-    #results.to_csv(output_fn, index=False, header=results.columns)
-    results.to_csv(output_fn, index=False, mode='a', header=not exists(output_fn))
+    results.to_csv(output_fn, index=False, mode='a',
+                   header=not exists(output_fn))
 
 
 def summarize(text: str):
+    """ Summarize a block of text using the {DRGIST} model
+
+    Args:
+        text (str): The text to summarize
+
+    Returns:
+        str: The summary of the text
+    """
     if not exists('summarizer.model'):
         summarizer = pipeline("summarization", model=DRGIST)
         summarizer.save_pretrained('summarizer.model')
     else:
         summarizer = pipeline("summarization", model='summarizer.model')
-    if len(text.split(' '))>=256:
+    if len(text.split(' ')) >= 256:
         t = ' '.join(text.split(' ')[:256])
-        return summarizer(t,max_length=t.count(' ')//2,min_length=t.count(' ')//3)[0]['summary_text']
-    else:
-        return summarizer(text,max_length=text.count(' ')//2,min_length=text.count(' ')//3)[0]['summary_text']
+        return summarizer(t, max_length=t.count(' ')//2,
+                          min_length=t.count(' ')//3)[0]['summary_text']
+    return summarizer(text, max_length=text.count(' ')//2,
+                      min_length=text.count(' ')//3)[0]['summary_text']
 
 
 def show_prize_banner(message: str, prize: float, show_score=False, limit=True):
+    """ Print a color-coded prize banner to the console
+
+    Args:
+        message (str): The message to display
+        prize (float): The prize value
+        show_score (bool, optional): Defaults to False.
+        limit (bool, optional): Defaults to True.
+    """
     header = f'[{prize:0.4f}] '
     color = PRIZES_RGB[int(prize*100)//N_TIERS]
 
     clean_val1 = message.replace("'", "\'").replace("\n", " -- ")
+    text = header+clean_val1
     if limit:
-        text = '\n'.join(textwrap.wrap(header+clean_val1, PRINTMAXCHARS, break_long_words=True))
-    else:
-        text = header+clean_val1
+        text = '\n'.join(
+            textwrap.wrap(text, PRINTMAXCHARS, break_long_words=True))
     if show_score:
         print(f'\033[1;38;5;{color}m{header} {text[len(header)-1:]}\033[0m')
     else:
@@ -108,38 +135,77 @@ def show_one(key1: str, val1: str, limit=False):
     """
     header = f'{key1}: '
     clean_val1 = val1.replace("'", "\'").replace("\n", " -- ")
+    text = header + clean_val1
     if limit:
-        text = '\n'.join(textwrap.wrap(header+clean_val1, PRINTMAXCHARS, break_long_words=True, max_lines=PRINTMAXLINES))
+        text = '\n'.join(textwrap.wrap(text,
+                                       PRINTMAXCHARS,
+                                       break_long_words=True,
+                                       max_lines=PRINTMAXLINES))
     else:
-        text = '\n'.join(textwrap.wrap(header+clean_val1, PRINTMAXCHARS, break_long_words=True))
+        text = '\n'.join(textwrap.wrap(text,
+                                       PRINTMAXCHARS,
+                                       break_long_words=True))
     print(f'\033[1m{key1}:\033[0m\033[38;5;8m{text[len(header)-1:]}\033[0m')
 
 
-def description( ds, nearest_neighbors, i):
-    #raw_data = read_raw_data(ds, nearest_neighbors, i)
+def description(ds, nearest_neighbors, i):
+    """ Print a description from the dataset
+
+    Args:
+        ds (Pandas.DataFrame): The dataset
+        nearest_neighbors (List): Sorted list of nearest neighbors
+        i (int): The neighbor to print
+    """
     fn = ds.loc[nearest_neighbors.index[i]].filename
     row = ds.loc[nearest_neighbors.index[i]].row
-    source=fn.split('/')[-1].split('_')[0]
-    funcname=eval(source)
-    raw_data = funcname(fn,TARGET[source])
-    show_one(i,raw_data.df.loc[row].Description)
+    source = fn.split('/')[-1].split('_')[0]
+    funcname = eval(source)
+    raw_data = funcname(fn, TARGET[source])
+    show_one(i, raw_data.df.loc[row].Description)
 
 
+def encode_prompt(prompt):
+    """Encode a prompt using the {DRGRANT} model
 
-def encode_prompt( prompt ):
+    Args:
+        prompt (str): The prompt to encode
+
+    Returns:
+        Array: Vector representation of the prompt
+    """
     model = SentenceTransformer(DRGRANT)
     return model.encode([prompt])
 
 
-def read_narrative_embeddings( filename:str ):
+def read_narrative_embeddings(filename: str):
+    """ Read narrative embeddings from a file
+
+    Args:
+        filename (str): The filename to read
+
+    Returns:
+        Pandas.DataFrame: The narrative embeddings
+    """
     return pd.read_pickle(filename)
 
 
-def sort_by_similarity_to_prompt( prompt, embedded_narratives, k):
+def sort_by_similarity_to_prompt(prompt, embedded_narratives):
+    """ Sort a set of narratives by similarity to a prompt
+
+    Args:
+        prompt (str): The prompt to compare
+        embedded_narratives (pandas.DataFrame): The embedded narratives
+
+    Returns:
+        Pandas.DataFrame: The sorted narratives
+    """
     embedded_prompt = encode_prompt(prompt)
-    similarity = [_[0] for _ in cosine_similarity(embedded_narratives.iloc[:,4:],embedded_prompt.reshape(1,-1))]
-    result = pd.DataFrame({'similarity':similarity},index=embedded_narratives.index)
-    result.sort_values('similarity',inplace=True,ascending=False)
+    similarity = [_[0] for _ in
+                  cosine_similarity(embedded_narratives.iloc[:, 4:],
+                                    embedded_prompt.reshape(1, -1))]
+    result = pd.DataFrame({'similarity': similarity},
+                          index=embedded_narratives.index)
+    result.sort_values('similarity', inplace=True, ascending=False)
     return result
 
 
@@ -222,8 +288,10 @@ def show_flags(k: int, prompt: str, active: bool, output: str, title: str):
         title (str): Title for results if multiple queries
     """
 
-    print(f'\033[38;5;84m\nSPECIFICATION: \033[0m')
-    print(f'Search for {k} most cosine-similar funding opportunity descriptions based on the "{title}" prompt:')
+    print('\033[38;5;84m\nSPECIFICATION: \033[0m')
+    print(f"""Search for {k} most cosine-similar funding
+          opportunity descriptions based on the
+          "{title}" prompt:""")
     show_prompt(prompt)
     if active:
         print(' - Restricting search to opportunities that have not expired')
@@ -252,18 +320,24 @@ def show_data_stats(ds):
 
 
 class Experiment():
-    def __init__(self, prompt:str, embeddingsFN:str, k:int, feed:str):
+    """ Class for running
+    """
+    def __init__(self, prompt: str, embeddingsFN: str, k: int, feed: str):
         self.prompt = prompt
         self.embeddingsFN = embeddingsFN
+        self.embeddings = None
+        self.nearest_neighbors = None
         self.k = k
         self.active = False
         self.feed = feed
     def run(self):
+        """ Run the experiment
+        """
         self.embeddings = read_narrative_embeddings(self.embeddingsFN)
         if self.feed != '*':
             self.embeddings = self.embeddings[~self.embeddings.filename.str.contains(self.feed)]
         show_data_stats(self.embeddings)
-        self.nearest_neighbors = sort_by_similarity_to_prompt(self.prompt,self.embeddings,self.k)
+        self.nearest_neighbors = sort_by_similarity_to_prompt(self.prompt, self.embeddings, self.k)
 
     def select_results(self, neighbors, active=False):
         df = pd.DataFrame([self.read_neighbor(i) for i in neighbors])
